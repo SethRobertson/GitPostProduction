@@ -162,28 +162,30 @@ post-production.</p>
 want to rewrite is absolutely critical.  This ref must be passed in to
 several of the commands you will be using.  You can find this commit
 using the normal techniques, including <code class="inline">git log
---oneline | less</code> and <code class="inline">gitk</code>
-(remembering that if you know the SHA of the first commit you want to
-rewrite, you can find the SHA of the commit before that
+--oneline</code> and <code class="inline">gitk</code> (remembering
+that if you know the SHA of the first commit you want to rewrite, you
+can find the SHA of the commit before that
 with <code class="inline">git rev-parse SHA^</code>—replacing the
 string "SHA" with the SHA of the first commit you want to rewrite,
-leaving "^" as literal).  Please note that you actually need to run
-the above command and get the actual SHA.  Because of the multipass
-technique we must use, using SHA^ in place of the SHA which SHA^
-points to would lead to…unfortunate…results.  Go ahead and try it if
-you want to be frustrated.</p>
+leaving "^" as literal).  While you can sometimes get away with
+leaving SHA^ there instead of dereferencing that commit, you
+absolutely cannot safely and generally use a symbolic reference (like
+HEAD or master) in place of SHA in "SHA^" in the commands listed
+below, so it is just safer all around if you find the true SHA of the
+first commit's parent.</p>
 
 <p>However, if you have followed the production guidelines above and
 you are working with a standard central repository distributed
 repository model, then there is already a convenient ref pointing to
 the very commit you are interested in.  Specifically I am talking
-about "@{u}" which is the pointer to the SHA of the upstream branch.
-If you have set your upstream branch, pulled with "--rebase", and not
-done any merge commits, then this ref will always point to a commit
-before all of the commits you want to/is safe to rewrite.</p>
+about "@{u}" (added in git v1.7.0) which is the pointer to the SHA of
+the upstream branch.  If you have set your upstream branch, pulled
+with "--rebase", and not done any merge commits, then this ref will
+always point to a commit before all of the commits you want to/is safe
+to rewrite.</p>
 
-<p>In my examples below I will be using "@{u}".  If you need to use a
-different SHA or ref, please substitute it as needed.</p>
+<p>In my examples below I will be using "@{u}".  So if you need to use
+a different SHA or ref, please substitute it as needed.</p>
 
 <h4>The SHA of the your last commit</h4>
 
