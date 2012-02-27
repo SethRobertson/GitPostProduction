@@ -1,0 +1,1053 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html lang="en" dir="ltr" xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>Post-Production Editing using Git</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="Content-Style-Type" content="text/css" />
+    <style type="text/css">
+      h1 {margin-left:auto; margin-right:auto; width:90%;}
+      h2 {margin-top:2em;}
+      h3 {margin-top:1em;}
+      ul {margin-left:1em;}
+      .i2 {margin-left:2em;}
+      body {margin:3em; background-color:#ffffff;}
+      div.befaftpre { clear: left; height: 0;}
+      pre { border:1pt solid black; padding: 0 1em 1em 1em; float: left; }
+      code.inline { white-space: nowrap; border:1pt solid gray; padding: 1pt; }
+    </style>
+  </head>
+  <body>
+    <div id='content'>
+      <h1><a href="http://sethrobertson.github.com/GitPostProduction/">Post-Production Editing using Git</a></h1>
+
+<p>In <a href="http://sethrobertson.github.com/GitBestPractices/">Commit
+Often, Perfect Later, Publish Once—Git Best Practices</a> we discussed
+"perfecting later", or otherwise hiding the sausage making that is
+development so that it appears to the outside world that your commits
+sprung full-formed in utter perfection into your git repository.
+However, we did not go into any detail on exactly how someone might go
+about doing this, other than vaguely pointing at a few relevant git
+commands.</p>
+
+<p>Before you go into post-production, you need to pick what you (or
+your team) deems utter perfection.  Perhaps you want to segregate out
+bugfixes (which might need cherry-picking) from new features?  Perhaps
+you want to have each commit be an easily understood concept.  Perhaps
+you want each commit to be cleanly compiling, or passing regression
+tests, or even fully tested: ensuring each commit compiles and is
+partially to full tested makes the job of forensic investigation
+(especially with git-bisect) much easier.  Perhaps you want all of the
+above? Perhaps all you need to do is squash all of your commits
+together?  In any case, deciding where you are heading before you set
+out is pretty important.</p>
+
+<p>This document will discuss in detail the process of perfecting your
+work prior to revealing it to the outside world.  This process mirrors
+the work of post-production in film making (from the perspective of a
+software developer who has never seen post-production in film making).
+Obviously this document cannot know what you are doing or how you did
+it, but the techniques described should be sufficient to handle most
+cases.</p>
+
+<h2>Table of Contents</h2>
+
+<ul>
+<li><a href="#production">Production</a></li>
+<li><a href="#pre-post-production">Pre-Post-Production</a></li>
+<li><a href="#post-production">Post-Production</a></li>
+<li><a href="#post-post-production">Post-Post-Production</a></li>
+<li><a href="#final">Final Notes</a></li>
+<li><a href="#disclaimer">Disclaimer</a></li>
+<li><a href="#copyright">Copyright</a></li>
+<li><a href="#thanks">Thanks</a></li>
+<li><a href="#comments">Comments</a></li>
+</ul>
+
+
+<p><a name="production" /></p>
+
+<h2>Production</h2>
+
+<p>Before we can get to post-production, we actually have to go
+through production and actually make the commits.  While we of course
+strongly recommend that you
+read <a href="http://sethrobertson.github.com/GitBestPractices/">the
+best practices document</a> and all of its references, there are a few
+items that we want to call out specifically.</p>
+
+<h3>Commit Early and Often</h3>
+
+<p>When you are planning on going through post-production, you can
+hardly commit early and often enough.  If you are half way through
+editing a line, with syntax errors left and right, and you notice a
+bug or other unrelated issue to your work and decide to fix it
+now, <em>commit your old broken code!</em> Then make your fix <em>and
+commit again!</em> Then continue your previous thought.  This will
+save your time and effort in post-production.  Really.</p>
+
+<h3>Don't Push!</h3>
+
+<p>Once you have published/pushed your work to shared repositories, we
+very much recommend against going through post-production with it.
+That is known as rewriting public history and in general requires
+telling everyone of your failings as a developer so that they can do
+the necessary work to recover on their side.</p>
+
+<p>At a minimum the other people need to use <code class="inline">git
+pull --rebase</code>, but if they have branched or tagged from the
+commits that were rewritten, they might need to do more complex
+recovery actions (transplanting branches, rewriting tags (itself
+deprecated and very error-prone).  Just say no.</p>
+
+<h3>Don't Merge!</h3>
+
+<p>The post-production process doesn't deal with merges very well.  If
+you must merge as part of your system creation process, I recommend
+going through post-production on your unpushed commits (which may be
+on only one, some, or all branches involved in the merge) prior to
+merging.  Of course if you are going to rebase, cherry-pick,
+squash-merge, or fast-forward merge the commits on the other branch
+over to hide the existence of the other branch, that isn't a true
+merge and can be done anytime.  However, a true merge which causes a
+merge commit to be formed should be avoided until post
+post-production.</p>
+
+<p>This of course includes merging the branch you are working on into
+some other branch.</p>
+
+<h3>Pull with --rebase</h3>
+
+<p>Isn't this a strange recommendation?  Why would it matter how you
+synchronize your repository with your upstream?  Well, if you always
+pull with --rebase, then you will never create a merge commit (see
+"Don't Merge" above).  "But", you say, "I'm did my non-rebase pull
+before I started making the commits I want to rewrite.  If I don't
+want to rewrite the merge or anything before it, it shouldn't matter
+how I did my pull."  True, in theory what you did before your first
+commit you want to rewrite is irrelevant.  However, if you pull with
+"--rebase", then the reference which tracks the location of your remote
+tracking branch "@{u}" will be pointing to a very convenient location.
+More on that later.</p>
+
+<p>Of course this assumes that you have set your upstream branch
+correctly.  That's just a good idea and it normally is done
+automatically anyway.  <code class="inline">git branch -vv</code> will
+show you the upstream branch names in "[]".  You may
+use <code class="inline">git branch --set-upstream localbranchname
+remotename/remotebranchname</code> as the method to update this
+upstream branch pointer.</p>
+
+<p>Oh, and this also makes your commits look less messy, which is the
+whole point of post-production, isn't it?  The only time you should
+not pull with --rebase is between the time of a strict merge and a
+push (although there
+are <a href="http://sethrobertson.github.com/GitBestPractices/#date">techniques</a>
+to rebase even then).</p>
+
+<p><a name="pre-post-production" /></p>
+
+<h2>Pre-Post-Production</h2>
+
+<p>After you have produced the commits representing the code you wish
+to perfect, there are a few things you need to do before moving into
+post-production.</p>
+
+<h3>Record important SHA</h3>
+
+<p>There are two SHA which are useful to the post-production process.</p>
+
+<h4>The SHA <em>before</em> the first commit you want to rewrite</h4>
+
+<p>Knowing a ref to the commit <em>before</em> the first commit you
+want to rewrite is absolutely critical.  This ref must be passed in to
+several of the commands you will be using.  You can find this commit
+using the normal techniques, including <code class="inline">git log
+--oneline | less</code> and <code class="inline">gitk</code>
+(remembering that if you know the SHA of the first commit you want to
+rewrite, you can find the SHA of the commit before that
+with <code class="inline">git rev-parse SHA^</code>—replacing the
+string "SHA" with the SHA of the first commit you want to rewrite,
+leaving "^" as literal).  Please note that you actually need to run
+the above command and get the actual SHA.  Because of the multipass
+technique we must use, using SHA^ in place of the SHA which SHA^
+points to would lead to…unfortunate…results.  Go ahead and try it if
+you want to be frustrated.</p>
+
+<p>However, if you have followed the production guidelines above and
+you are working with a standard central repository distributed
+repository model, then there is already a convenient ref pointing to
+the very commit you are interested in.  Specifically I am talking
+about "@{u}" which is the pointer to the SHA of the upstream branch.
+If you have set your upstream branch, pulled with "--rebase", and not
+done any merge commits, then this ref will always point to a commit
+before all of the commits you want to/is safe to rewrite.</p>
+
+<p>In my examples below I will be using "@{u}".  If you need to use a
+different SHA or ref, please substitute it as needed.</p>
+
+<h4>The SHA of the your last commit</h4>
+
+<p>If you decide that you made a horrible mistake during the
+post-production process, your original work is still around and
+accessible (with enough effort).  However, recording the SHA of your
+most recent commit SHA might reduce that required
+effort.  <code class="inline">git rev-parse HEAD</code></p>
+
+<p>Again, it isn't like this data isn't stored in git, but having to
+grope through the reflog can be tedious.  You will have to decide
+whether recording these SHA is more tedious than the odd reflog
+dive.</p>
+
+<h3>Backups</h3>
+
+<p>While it is probably impossible to lose data or commits (at least
+until the two week grace period has passed,
+see <a href="http://sethrobertson.github.com/GitFixUm/">on undoing,
+fixing, or removing commits in git</a>) when using the techniques
+described in this post-production process, being careful is never
+wrong.  Backups are described
+in <a href="http://sethrobertson.github.com/GitBestPractices/">Git
+Best Practices</a>.</p>
+
+<h3>Cleaning or stashing</h3>
+
+<p>Before going into post-production, we recommend ensuring that your
+working directory is nice and clean so that you will not get
+unnecessary conflicts (e.g. a file which was committed in git but was
+then deleted and left as a non-tracked file) and otherwise have a nice
+and clean <code class="inline">git status</code> to prevent accidents
+during post-production editing.  You can <code class="inline">git
+clean -dnx</code> and if there are no files that you need to keep,
+then <code class="inline">git stash -ua</code> (you might be wrong
+after all) or even (much more dangerously) <code class="inline">git
+clean -dfx</code>.</p>
+
+<p><a name="test-repo-production" /></p>
+
+<h2>Production of test repository</h2>
+
+<p>In order to create an example to work through, we will be creating
+a test configuration which we will be sending through post-production.
+There is no doubt that this example is extremely synthetic, but for
+all of that, it should more or less replicate the processes of what
+you will do in real life.  Please feel free to following along by
+copy-pasting (not retyping, copy-pasting) these commands into a
+convenient shell.</p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+cd /tmp; rm -rf gpp-[yz]; git init --bare gpp-z; git clone gpp-z gpp-y;
+cd gpp-y; for f in A B C D; do echo A &gt; $f; done; git add .
+git commit -m "Initial structure"; git push -u origin master
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>Here we have an upstream repository "gpp-z" and a local repository
+"gpp-y" and we have created an initial commit with the letter A in
+four different files named "A" "B" "C" and "D".  This represents the
+prior existing state of the universe before a commit series.  Now we
+will go ahead and create the commit series that we will be putting
+through post-production.</p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+for f in A B C D; do echo $f$f &gt;&gt; $f; done; git commit -am "Add doubles"
+
+echo AAA&gt;&gt;A; echo AAAA&gt;&gt;A; git commit -am "Fill out A series"
+
+echo BBB&gt;&gt;B; echo BBBB&gt;&gt;B; for f in A B C D; do sed -i "s/A/$f/g" $f; done
+git commit -am "Fill out B series plus bugfix to initial commits"
+
+echo CCC&gt;C; echo CCCC&gt;C; git commit -am "Fill out C series"
+
+echo DDD&gt;&gt;D; echo DDDD&gt;&gt;D; (echo С; echo СС; echo ССС; echo СССС)&gt;C;
+git commit -am "Fill out D series and fix C series"
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>After this series of five commits, we end up with A AA AAA AAAA in
+file A, B BB BBB BBBB in file B, etc.  However we got here by a
+somewhat convoluted path where in some commits we made changes breadth
+first, in others depth first, we fixed a bug made in the commits
+before this commit series, and we fixed a bug made during this commit
+series.</p>
+
+<p>After reviewing the changes we made, we have decided that our goal
+for this commit series is to separate out the bugfix to previous
+commits in a commit by itself and choose to make one commit to fill
+out each letter in their own commit without any (known) bugs.  We will
+end up with the same number of commits, but the commits will be much
+simpler to understand, without bugs which might confuse git-bisect,
+and cherry-pickable.</p>
+
+<p><a name="post-production" /></p>
+
+<h2>Post-Production</h2>
+
+<p>Now you should be finally ready to start performing post-production
+editing of your unpushed commits in your repository.  The technique I
+will be espousing here is either DIVINE (DIvide, INtegrate, and
+Evaluate) or SATAN (Segregate, Arrange, Team, Analyze, and Narrate)
+depending on your point of view.</p>
+
+<p>Contrived acronyms aside, the process is fairly straightforward.</p>
+
+<h3>Segregating or dividing commits</h3>
+
+<p>First we need to divide the commits representing multiple concepts
+(or a bugfix and a commit or other containing multiple things you want
+in separate commits).</p>
+
+<p>The command you execute to begin the process of segregating your
+commits is very simple: <code class="inline">git rebase -i @{u}</code>
+(remember you can replace @{u} with the SHA of the
+commit <em>before</em> the first commit you want to edit in
+post-production if necessary).</p>
+
+<p>This will bring you in an editor showing you a list of commits
+(with parents above children) available for modification, something
+like the following if you were using the provided example
+configuration (note the 7 character abbreviated SHA will be different
+for you):</p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+pick d6d2951 Add doubles
+pick d4803e2 Fill out A series
+pick aacc018 Fill out B series plus bugfix to initial commits
+pick ff2b343 Fill out C series
+pick ba253fb Fill out D series and fix C series
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>There will also be some additional information commented out.  You
+need to change the word "pick" to "edit" for each commit which (might)
+need to be split.  In the example above, we can easily see that the
+third and fifth lines need to be split, so we could change those lines
+from "pick" to "edit".  Since we want to separate each file into its
+own commit, we also need to edit the first commit.  However, if we
+happened to not remember whether the second commit needed to be split
+or not, we can go ahead and edit that as well.  The resulting lines
+would look something like:</p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+edit d6d2951 Add doubles
+edit d4803e2 Fill out A series
+edit aacc018 Fill out B series plus bugfix to initial commits
+pick ff2b343 Fill out C series
+edit ba253fb Fill out D series and fix C series
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>After saving the file and exiting your editor, the system will
+bring you to the first commit you asked to edit:</p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+Stopped at d6d2951... Add doubles
+You can amend the commit now, with
+
+    git commit --amend
+
+Once you are satisfied with your changes, run
+
+    git rebase --continue
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>Since we want to make the modification to each file a commit by
+itself, we need to peel off the "Add doubles" commit (leaving the
+working directory with the results of the commit in it) and turn the
+single commit into four distinct commits:</p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+git reset --mixed HEAD^
+git add A
+git commit -m "Add double As"
+git add B
+git commit -m "Add double Bs"
+git add C
+git commit -m "Add double Cs"
+git add D
+git commit -m "Add double Ds"
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>Everything looks good, so we can tell git to proceed to the next
+commit with <code class="inline">git rebase --continue</code></p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+Stopped at d4803e2... Fill out A series
+You can amend the commit now, with
+
+    git commit --amend
+
+Once you are satisfied with your changes, run
+
+    git rebase --continue
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>At this point, you can <code class="inline">git show HEAD</code>
+or <code class="inline">git diff HEAD^</code> or otherwise investigate
+the commit to see if you need to split it or not.  In this case, not
+so much, so we go ahead and tell git we are satisfied
+with <code class="inline">git rebase --continue</code>.</p>
+
+<p>It will now bring us to the third commit we asked to edit:</p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+Stopped at aacc018... Fill out B series plus bugfix to initial commits
+You can amend the commit now, with
+
+    git commit --amend
+
+Once you are satisfied with your changes, run
+
+    git rebase --continue
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>This time, investigation shows that we have a bugfix to prior
+commits and new features intermingled in the same commit.  You can fix
+this any way you want, but this is one simple method: first we peel
+off the current commit, leaving the working directory the same.  Now
+running <code class="inline">git status</code>
+or <code class="inline">git diff</code> shows all of the changes from
+that commit in our working directory, ready to be added.  In this
+example, we'll make the bugfix commit first and the new feature commit
+second (though it could be done in the other order).</p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+git reset --mixed HEAD^
+git status
+git add C D
+git add -p B
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>This may be the first time you have heard of
+the <code class="inline">git add -p</code> option, but it is a very
+powerful method of dividing independent changes made to the same file.
+If you are following along, you should see something like:</p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+diff --git a/B b/B
+index 0dc9441..921f5d2 100644
+--- a/B
++++ b/B
+@@ -1,2 +1,4 @@
+-A
++B
+ BB
++BBB
++BBBB
+Stage this hunk [y,n,q,a,d,/,s,e,?]?
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>You can go ahead and type ? for more information, but in this case
+we want to split this particular "hunk" (or change component) into
+multiple changes, so we will go ahead and type "s" here.  In your own
+endeavors, you might need to use any one of those options, but please
+be very careful with "e" since editing diff files is typically
+extremely tricky.  After typing "s" we should see something like:</p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+Split into 2 hunks.
+@@ -1,2 +1,2 @@
+-A
++B
+ BB
+Stage this hunk [y,n,q,a,d,/,j,J,g,e,?]?
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>This is the bugfix change we want, so we go ahead and type y here.
+We then see the other half of the change, which in this case
+represents the new feature, so we can type "n" or "q" here.  In any
+case, we can review our <code class="inline">git status</code> and our
+staged change <code class="inline">git diff --cached</code>.</p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+# Not currently on any branch.
+# Changes to be committed:
+#   (use "git reset HEAD &lt;file&gt;..." to unstage)
+#
+#       modified:   B
+#       modified:   C
+#       modified:   D
+#
+# Changes not staged for commit:
+#   (use "git add &lt;file&gt;..." to update what will be committed)
+#   (use "git checkout -- &lt;file&gt;..." to discard changes in working directory)
+#
+#       modified:   B
+#
+
+diff --git a/B b/B
+index 0dc9441..0b1bb71 100644
+--- a/B
++++ b/B
+@@ -1,2 +1,2 @@
+-A
++B
+ BB
+diff --git a/C b/C
+index edc7dd2..21c9dd3 100644
+--- a/C
++++ b/C
+@@ -1,2 +1,2 @@
+-A
++C
+ CC
+diff --git a/D b/D
+index 71dbedb..7f07dc1 100644
+--- a/D
++++ b/D
+@@ -1,2 +1,2 @@
+-A
++D
+ DD
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>Everything looks good for the bugfix, so we can go ahead and
+commit.  Be sure not to accidentally add the "-a" flag to git-commit
+here! <code class="inline">git commit -m "Bugfix to initial
+commits"</code></p>
+
+<p>Now, looking at <code class="inline">git status</code> shows that
+we still have uncommitted changes left.  Investigating
+a <code class="inline">git diff</code> shows that we don't need to
+further split the commit and can go ahead and commit the remainder of
+the code, <code class="inline">git commit -am "Fill out B
+series"</code>, and then tell git to proceed to the next
+patch: <code class="inline">git rebase --continue</code></p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+Stopped at ba253fb... Fill out D series and fix C series
+You can amend the commit now, with
+
+    git commit --amend
+
+Once you are satisfied with your changes, run
+
+    git rebase --continue
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>Investigation shows that we need to split this into two commits,
+one for Ds, and the other for Cs.  We can go ahead and do that.</p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+git reset --mixed HEAD^
+git add D
+git commit -m "Fill out D series"
+git add C
+git commit -m "Fix truncation problem in C series"
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>Yes, I know --mixed is the default for git-reset.  I like being
+precise with git-reset since it is one of the more dangerous git
+commands.  Anyway, this looks all good, so we can tell git to proceed:
+<code class="inline">git rebase --continue</code></p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+Successfully rebased and updated refs/heads/master.
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>So now we can review where we currently are with <code class="inline">git log --oneline @{u}..</code></p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+64a7ac6 Fix truncation problem in C series
+bee967d Fill out D series
+c4a1c0d Fill out C series
+2186302 Fill out B series
+3ee2f5e Bugfix to initial commits
+3453b2f Fill out A series
+3a946cc Add double Ds
+c1ee9e3 Add double Cs
+b9c39f0 Add double Bs
+f45017e Add double As
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>Well, we certainly seem to have successfully divided.  Our five
+commits have been turned into ten.  But this is certainly not what we
+want the public to see, so we press on.</p>
+
+<p>Please note if you commit early and often enough, you get to skip
+this step entirely since your commits would never have multiple things
+in them which need separating.  This is a special bonus for those who
+follow that practice.</p>
+
+<h3>Arrange commits</h3>
+
+<p>Next we reorder the commits so that commits you want to merge a
+next to each other; for example, a bugfix made to a bug you introduced
+in this series of commits is next to the commit which introduced the
+bug.</p>
+
+<p>Unlike the previous step, this step can be a bit tricky since
+reordering the commits may introduce dependency problems which will
+cause rebase conflicts.  Sometimes you can do some creating ordering
+to fix this problem, sometimes you are just out of luck.</p>
+
+<p>Unfortunately, the example we have put together is going to run
+into this problem since the bugfix to the initial commits occurred
+after the commits to add the doubled letters and we want to assemble
+all of the new features for a specific letter to be in a distinct
+commit.  Thus no matter how we order those commits, we are going to
+get a (well more than one honestly) conflict.  Perhaps we can think of
+it as a teachable happenstance.</p>
+
+<p>To start the reordering process we once again
+run <code class="inline">git rebase -i @{u}</code></p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+pick f45017e Add double As
+pick b9c39f0 Add double Bs
+pick c1ee9e3 Add double Cs
+pick 3a946cc Add double Ds
+pick 3453b2f Fill out A series
+pick 3ee2f5e Bugfix to initial commits
+pick 2186302 Fill out B series
+pick c4a1c0d Fill out C series
+pick bee967d Fill out D series
+pick 64a7ac6 Fix truncation problem in C series
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>Now we get to sort things around to make everything line up better.
+Remember that lines appearing first in the file get applied before
+lines appearing subsequently.  We've decided that the following commit
+series makes the most sense and is the most useful to potential future
+users (since being able to cherry-pick the bugfix without getting a
+merge conflict due to the new features is very convenient).</p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+pick 3ee2f5e Bugfix to initial commits
+pick f45017e Add double As
+pick 3453b2f Fill out A series
+pick b9c39f0 Add double Bs
+pick 2186302 Fill out B series
+pick c1ee9e3 Add double Cs
+pick c4a1c0d Fill out C series
+pick 64a7ac6 Fix truncation problem in C series
+pick 3a946cc Add double Ds
+pick bee967d Fill out D series
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>We save, exit the editor, and watch rebase go to work.
+Unfortunately, as predicted, we run smack into a conflict right out of
+the gate.  Annoying, but I'm sure it will make us better human
+beings.</p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+error: could not apply 3ee2f5e... Bugfix to initial commits
+
+When you have resolved this problem run "git rebase --continue".  If
+you would prefer to skip this patch, instead run "git rebase --skip".
+To check out the original branch and stop rebasing run "git rebase
+--abort".  Could not apply 3ee2f5e... Bugfix to initial commits
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>You can go through the normal conflict resolution process.
+Call <code class="inline">git mergetool</code> or manually edit the
+files in question.  Unfortunately, in <em>this</em> particular
+example, the simple resolution process of picking one alternative or
+the other simply isn't going to work.  Instead we need to edit each
+file so that the appropriate letter is the one and only letter in each
+file.  For this particular resolution process I'm going to cheat a bit
+and just blow in the correct values.</p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+git status
+for f in B C D; do echo $f > $f; done
+git status
+git diff
+git add .
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>We can tell git to proceed with the normal <code class="inline">git
+rebase --continue</code>.  It brings us into an editor to update the
+commit message and after exiting that, starts applying the next
+commit.  This actually works, as does the one after that.
+Unfortunately, the third commit runs into another conflict.</p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+[detached HEAD aa62f4a] Bugfix to initial commits
+ 3 files changed, 3 insertions(+), 3 deletions(-)
+error: could not apply b9c39f0... Add double Bs
+
+When you have resolved this problem run "git rebase --continue".  If
+you would prefer to skip this patch, instead run "git rebase --skip".
+To check out the original branch and stop rebasing run "git rebase
+--abort".  Could not apply b9c39f0... Add double Bs
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>Once again picking neither option will generate the correct file.
+You can use whatever technique you want, but (in this case) you want
+to generate a file with B on the first line and BB on the second.
+I'll use a slightly unusual technique in this example (chosen to
+feature some unusual commands and because it is automated).</p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+git checkout --theirs -- B
+sed -i 's/A/B/' B
+git add B
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>You can proceed with <code class="inline">git rebase
+--continue</code> but…if you wanted to you could actually make a
+commit here and <em>then</em> proceed.  <code class="inline">git
+commit -m "Add double Bs"; git rebase --continue</code> and it works
+just as well.  And by just as well, I mean either choice dumps us into
+another conflict (after successfully applying one commit without a
+conflict).</p>
+
+<p>This is exactly the same as the previous conflict, just on another
+file.  I'll use another resolution sequence for variety.</p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+git checkout --ours -- C
+echo CC &gt;&gt; C
+git add C
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>Promenade forth with <code class="inline">git rebase
+--continue</code> and as you probably expected, we get another
+conflict.  We've had a lot of conflicts on this example, but this is
+actually pretty rare in real world applications.  It is just that we
+made two distinct commits affecting every file and even worse,
+essentially affecting the same line in every file, and need to reverse
+the order of application of those commits in the pursuit of outer
+beauty.  Normally the changes would be distinct enough that you would
+not get all of these conflicts.  I'm not sure how much I recommend the
+technique I use here to fix the conflict, but nothing else sprung to
+mind:</p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+git show master:D | head -n 2 &gt; D
+git commit -am "Add double Ds"
+git rebase --continue
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>Ah, finally we are free of the conflicts and everything is
+committed and <code class="inline">git log --oneline @{u}..</code>
+reports them in the correct order (yes the order is reversed from the
+editing session in <code class="inline">git rebase -i</code>; live
+with it).</p>
+
+<h3>Team commits</h3>
+
+<p>The next step is to squash the related commits together.  Actually,
+we could have done this step and the previous step in one combined
+integration step, but doing it separately <em>might</em> lead to more
+easily understood conflicts, if you were perchance to encounter
+conflicts.  Not that this would happen to anyone here.  In any case,
+we once again run <code class="inline">git --rebase -i @{u}</code></p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+pick aa62f4a Bugfix to initial commits
+pick 143d9d5 Add double As
+pick f3398c8 Fill out A series
+pick a64f722 Add double Bs
+pick a9dcb4d Fill out B series
+pick 37e842b Add double Cs
+pick bacc190 Fill out C series
+pick d1a9c9c Fix truncation problem in C series
+pick 4cd3178 Add double Ds
+pick f8d3aec Fill out D series
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>We tell the system to squash the related commits together, ensuring
+that the more recent commits (further down in the file) are the ones
+which get marked for squashing.</p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+pick aa62f4a Bugfix to initial commits
+pick 143d9d5 Add double As
+squash f3398c8 Fill out A series
+pick a64f722 Add double Bs
+squash a9dcb4d Fill out B series
+pick 37e842b Add double Cs
+squash bacc190 Fill out C series
+s d1a9c9c Fix truncation problem in C series
+pick 4cd3178 Add double Ds
+s f8d3aec Fill out D series
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>As you can see, I got tired of writing out "squash" and switched to
+the abbreviation of "s".  Saving and exiting gives us…an editor.  Any
+time you are squashing commits together, git makes you create a
+unified commit message which describes all changes.  In this case, I'm
+just going to change the message to/select "Fill out . series".  Save
+and exit.  We will get four editing sessions for the four new combined
+commits which we are generating.  Note that we do not see an editor
+for the "Bugfix to initial commits" commit since we did not squash
+anything into that commit.</p>
+
+<p>Reviewing the current state of the commit series
+with <code class="inline">git log --oneline @{u}..</code> shows that
+we are in the correct order.</p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+15c71aa Fill out D series
+f92b407 Fill out C series
+2d5ffb4 Fill out B series
+cbc6b7b Fill out A series
+aa62f4a Bugfix to initial commits
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>"Everything look good!  Let's push that puppy!"  Not so fast
+cowboy.  There are still two steps left in this process.  Sure you
+could skip them, but you might regret it in the fullness of time.</p>
+
+<p><a name="analyze" /></p>
+
+<h3>Analyze commits</h3>
+
+<p>Penultimately, we go through each commit ensuring it compiles and
+is otherwise tested.  If you find errors at this step, this could
+involve creating new commits, fixing old commits, or otherwise
+repeating this process.</p>
+
+<p>Most likely the easiest way to do this is to…once
+again…run <code class="inline">git rebase -i @{u}</code>.  This time
+you will want to change all of the "pick" messages to "edit".</p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+edit aa62f4a Bugfix to initial commits
+edit cbc6b7b Fill out A series
+edit 2d5ffb4 Fill out B series
+edit f92b407 Fill out C series
+edit 15c71aa Fill out D series
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>You will be dumped into the state of the tree for each commit.  You
+can do ahead and compile, run regression tests, or do whatever else is
+needed to validate your commits.  When you are done validating a
+particular commit, go ahead and run <code class="inline">git reset
+--continue</code> to proceed.  Please note that you might also want to
+run <code class="inline">git clean -ndx</code> (and if that returns
+OK, replace the "-n" with "-f") to prevent work product from one test
+from contaminating a subsequent test.</p>
+
+<p>Since we don't have a compilation phase for this repo or a
+regression test, you might be tempted to skip this step.  Well, that
+is no excuse (or perhaps it is an excuse to add such things).  For
+instance, take a closer look at the state of the repository when we
+are at the "Fill out the C series" stage.  Don't those Cs in the C
+file look a little...weird?  (Assuming you copy-pasted my instructions
+faithfully, of course.)  They look Cish, but not quite right.  Hmm.
+How can we tell what is going on here.
+Perhaps <code class="inline">od -t x C</code> (if you have that
+program).</p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+0000000 d0 a1 0a d0 a1 d0 a1 0a d0 a1 d0 a1 d0 a1 0a d0
+0000020 a1 d0 a1 d0 a1 d0 a1 0a
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>d0 a1 0a?  Well 0a is clearly newline (\n), but what is that d0a1
+about?  Further investigation by someone sufficient aware of recent
+advances in internationalization might show that d0a1 is the UTF-8
+representation of the unicode codepoint U+0421, which represents the
+Cyrillic capital letter ES which happens to look almost identical to
+the ASCII letter C (UTF-8 43).  Well, in any event the point we were
+trying to make here is that some bugs can be subtle and looking right
+is no replacement for actual testing.  We can go ahead and fix this
+right up.</p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+sed -i 's/./C/g' C
+od -t x1 C
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>This reveals that my sed is UTF-8 aware (quite a pleasant surprise
+actually) and that our files now contains the expected ASCII-C
+characters.</p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+0000000 43 0a 43 43 0a 43 43 43 0a 43 43 43 43 0a
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>Good thing we did these final checks, neh?  Now that this passes
+our quality inspection, we can go ahead and <code class="inline">git
+commit --amend</code> and <code class="inline">git rebase
+--continue</code> Pressing on, we do our quality inspection of the D
+commit (noting that the C file has properly been updated).  Does that
+D look normal?  Really?  Yup.  We can do our
+final <code class="inline">git rebase --continue</code> and we are
+complete with the quality analysis stage.</p>
+
+<h3>Narrate commits</h3>
+
+<p>Finally, we go through each commit to perfect the commit message,
+to ensure it says everything that needs to be said.  You could go
+through the analyze and narrate steps at the same time in one
+evaluation step, but doing it separately leads to better contrived
+acronyms, I mean leads to better processes since you are not trying to
+remember to do two things at the same time.</p>
+
+<p>For the last time, run <code class="inline">git rebase -i @{u}</code>.  This
+time, change the "pick"s to "reword"s.</p>
+
+<p>You are dumped into an editor where you perfect your commit
+messages.  Perfecting your commit message is
+a <a href="http://sethrobertson.github.com/GitBestPractices/#usemsg">best
+practice</a>.</p>
+
+<p>In my example, I'm going to add bug numbers and actually explain
+some more details about the change I am making.  You can see the
+resulting messages below, as seen after the rebase has completed,
+with <code class="inline">git log @{u}..</code></p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+commit 0328bc9794315fa77fa54fb1622b8df216f62086
+Author: Seth Robertson &lt;SethRobertson@example.com&gt;
+Date:   Sat Feb 25 19:11:28 2012 -0500
+
+    Bug 1526: Fill out D series
+
+    After the start with the single character D, we need to complete the D
+    file to four Ds.
+
+commit 52e11b80abb09e3572419b878583d7251fbabbb2
+Author: Seth Robertson &lt;SethRobertson@example.com&gt;
+Date:   Sat Feb 25 17:59:02 2012 -0500
+
+    Bug 1526: Fill out C series
+
+    After the start with the single character C, we need to complete the C
+    file to four Cs.
+
+commit 7acf62b871de7dc9c69453b34c1618f25be2ebef
+Author: Seth Robertson &lt;SethRobertson@example.com&gt;
+Date:   Sat Feb 25 18:55:54 2012 -0500
+
+    Bug 1526: Fill out B series
+
+    After the start with the single character B, we need to complete the B
+    file to four Bs.
+
+commit c2dd456c95305931ab94248dc84a163bb76aaa67
+Author: Seth Robertson &lt;SethRobertson@example.com&gt;
+Date:   Sat Feb 25 17:59:02 2012 -0500
+
+    Bug 1526: Fill out A series
+
+    After the start with the single character A, we need to complete the A
+    file to four As.
+
+commit c7e953b4725a761b1d3e649a054e086890cfeddf
+Author: Seth Robertson &lt;SethRobertson@example.com&gt;
+Date:   Sat Feb 25 18:02:20 2012 -0500
+
+    Bug 1521r: Initial commits comprised with A
+
+    The B file should contain only Bs and not As.  Likewise with C and D.
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<h3>Disaster recovery</h3>
+
+<p>It seems unlikely if you are careful, and have faithfully followed
+the instructions and recommendations enclosed, but if you mess up and
+want to undo all of this garbage you can.</p>
+
+<p>If you were in the middle of a rebase step that seems headed for
+(or already in) disaster and just want to undo this one step, you can
+run <code class="inline">git rebase --abort</code></p>
+
+<p>On the other hand, if you want to redo everything, you can take
+that SHA we told you to save during Pre-Post-Production
+and <code class="inline">git reset --hard SHA</code></p>
+
+<p>If you, err, forgot to save that SHA, you can use the reflog to
+recover that SHA.  Either <code class="inline">git log -g</code>
+or <code class="inline">gitk --date-order MYBRANCH $(git log -g
+--pretty=%H)</code> Once you find the SHA representing the state you
+wish you were at, run the reset command as described above.</p>
+
+<p><a name="post-post-production" /></p>
+
+<h2>Post-Post-Production</h2>
+
+<p>Now that your normal commits are correct, there are two steps you
+might need to/want to consider taking.  First
+is <code class="inline">git pull --rebase</code> to ensure no-one has
+sneakily gone and pushed something to the central repository without
+your permission.  If you do get some changes pulled in, a superior
+being would go back to the <a href="#analyze">Analyze commits</a>
+stage and retest all of their commits</p>
+
+<p>The second is something we alluded to all of the way back in
+production step, namely to go ahead and merge in some other branch if
+necessary (or merge this branch somewhere else, whichever).  Of course
+at that point you need to once again test the post-merge state.</p>
+
+<p>Finally, when you are all done, everything is tested and beautiful,
+it is finally time to <code class="inline">git push</code> and share
+your perfected jewels with the unworthy and unappreciative masses.</p>
+
+<p><a name="final" /></p>
+
+<h2>Final notes</h2>
+
+<p>This process produces a lot of invisible kruft/chaff.  You can see
+this with the command <code class="inline">gitk --all --date-order
+$(git log -g --pretty=%H)</code> You get to see the full history of
+all of the intermediate states of your repository.  I'm here to tell
+you to <em>not worry about it</em>.  This stuff is good disaster
+recovery fodder and if you don't do anything to it, it will go away in
+the fullness of time.  In any event, no-one else will see it.</p>
+
+<p><a name="disclaimer" /></p>
+
+<h2>Disclaimer</h2>
+
+<p>Information is not promised or guaranteed to be correct, current,
+or complete, and may be out of date and may contain technical
+inaccuracies or typographical errors.  Any reliance on this material
+is at your own risk.  No one assumes any responsibility (and everyone
+expressly disclaims responsibility) for updates to keep information
+current or to ensure the accuracy or completeness of any posted
+information. Accordingly, you should confirm the accuracy and
+completeness of all posted information before making any decision
+related to any and all matters described.</p>
+
+<p><a name="copyright" /></p>
+
+<h2>Copyright</h2>
+
+<p>Copyright ⓒ 2012 Seth Robertson</p>
+
+<p>Creative Commons Attribution-ShareAlike 3.0 Generic (CC BY-SA 3.0)
+http://creativecommons.org/licenses/by-sa/3.0/</p>
+
+<p>OR</p>
+
+<p>GNU Free Documentation v1.3 with no Invariant, Front, or Back Cover texts.
+http://www.gnu.org/licenses/fdl.html</p>
+
+<p>I would appreciate changes being sent back to me, being notified if
+this is used or highlighted in some special way, and links being
+maintained back to
+the <a href="http://sethrobertson.github.com/GitPostProduction/">authoritative
+source</a>.  Thanks.</p>
+
+<p><a name="thanks" /></p>
+
+<h2>Thanks</h2>
+
+<p>Thanks to the experts on #git, and my co-workers, for review,
+feedback, and ideas.</p>
+
+<p><a name="comments" /></p>
+
+<h2>Comments</h2>
+
+<p>Comments and improvements welcome.</p>
+
+<p>Add them <a href="https://gist.github.com/1540906">on a mostly
+unrelated gist page</a>, or discuss with SethRobertson (and others) on
+<a href="irc://irc.freenode.net/git">#git</a></p>
+
+    </div>
+    <script type="text/javascript">
+
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-28660801-1']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+	var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+	ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+	var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+    </script>
+  </body>
+</html>
