@@ -286,18 +286,18 @@ and cherry-pickable.</p>
 <p>Now you should be finally ready to start performing post-production
 editing of your unpushed commits in your repository.  The technique I
 will be espousing here is either DIVINE (DIvide, INtegrate, and
-Evaluate) or SATAN (Segregate, Arrange, Team, Analyze, and Narrate)
+Evaluate) or SATAN (Split, Arrange, Team, Analyze, and Narrate)
 depending on your point of view.</p>
 
 <p>Contrived acronyms aside, the process is fairly straightforward.</p>
 
-<h3>Segregating or dividing commits</h3>
+<h3>Splitting or DIviding commits</h3>
 
 <p>First we need to divide the commits representing multiple concepts
 (or a bugfix and a commit or other containing multiple things you want
 in separate commits).</p>
 
-<p>The command you execute to begin the process of segregating your
+<p>The command you execute to begin the process of splitting your
 commits is very simple: <code class="inline">git rebase -i @{u}</code>
 (remember you can replace @{u} with the SHA of the
 commit <em>before</em> the first commit you want to edit in
@@ -746,11 +746,12 @@ with it).</p>
 <h3>Team commits</h3>
 
 <p>The next step is to squash the related commits together.  Actually,
-we could have done this step and the previous step in one combined
-integration step, but doing it separately <em>might</em> lead to more
-easily understood conflicts, if you were perchance to encounter
-conflicts.  Not that this would happen to anyone here.  In any case,
-we once again run <code class="inline">git --rebase -i @{u}</code></p>
+we could have done this step and the previous step in one
+combined <b>INtegration</b> step, but doing it
+separately <em>might</em> lead to more easily understood conflicts, if
+you were perchance to encounter conflicts.  Not that this would happen
+to anyone here.  In any case, we once again
+run <code class="inline">git --rebase -i @{u}</code></p>
 
 <div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
 pick aa62f4a Bugfix to initial commits
@@ -890,10 +891,10 @@ complete with the quality analysis stage.</p>
 
 <p>Finally, we go through each commit to perfect the commit message,
 to ensure it says everything that needs to be said.  You could go
-through the analyze and narrate steps at the same time in one
-evaluation step, but doing it separately leads to better contrived
-acronyms, I mean leads to better processes since you are not trying to
-remember to do two things at the same time.</p>
+through the analyze and narrate steps at the same time in
+one <b>Evaluation</b> step, but doing it separately leads to better
+contrived acronyms, I mean leads to better processes since you are not
+trying to remember to do two things at the same time.</p>
 
 <p>For the last time, run <code class="inline">git rebase -i @{u}</code>.  This
 time, change the "pick"s to "reword"s.</p>
