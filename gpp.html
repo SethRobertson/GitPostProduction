@@ -986,6 +986,59 @@ your permission.  If you do get some changes pulled in, a superior
 being would go back to the <a href="#analyze">Analyze commits</a>
 stage and retest all of their commits</p>
 
+<div class="boxin">
+ <p><em>Hint:</em> If you have an automated method to test your
+commit, in whatever way that you do your testing, there are several
+ways to use that when (re)testing many commits from a git series to
+save you work.  You can do something like:</p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+SAVE=`git symbolic-ref -q HEAD || git rev-parse HEAD`
+exec 3< <(git rev-list @{u}..)
+while read rev; do
+ git checkout $rev; make test &lt;/dev/null ||
+   (echo $rev is bad; false) || break;
+done <&3
+exec 3<&-
+git checkout $SAVE
+if [ "$rev" ]; then
+  echo 'Quality check failed, run `git rebase -i '"$rev"'^"`'
+  echo 'And change the first line from "pick" to "edit", and fix the problem'
+fi
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>Obviously you would change <code class="inline">make test</code>
+with whatever command that would validate your commit.  Remember to
+cleanup all state (perhaps the dangerous <code class="inline">git
+clean -dfx</code>) before/after the test command to clean up any stale
+state which could contaminate the test.</p>
+
+<p>Or you can use the <code class="inline">git rebase -i @{u}</code>
+special "x" syntax (which runs a command on the work-tree from the
+revision specified <em>above</em> the line with the x) to do something
+similar.</p>
+
+<div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
+pick aa62f4a Bugfix to initial commits
+x make test
+pick cbc6b7b Fill out A series
+x make test
+pick 2d5ffb4 Fill out B series
+x make test
+pick f92b407 Fill out C series
+x make test
+pick 15c71aa Fill out D series
+x make test
+</code></pre><div class="befaftpre"><!-- --></div></div>
+
+<p>If the command you put after the "x " fails, it will leave you at
+that revision ready for you to make the correction, "add", "--amend",
+and "--continue" the commit.  The same comments from above about
+cleaning up state before/after the test apply here.</p>
+
+
+</div>
+
 <p>The second is something we alluded to all of the way back in
 production step, namely to go ahead and merge in some other branch if
 necessary (or merge this branch somewhere else, whichever).  Of course
