@@ -14,6 +14,7 @@
       div.befaftpre { clear: left; height: 0;}
       pre { border:1pt solid black; padding: 0 1em 1em 1em; float: left; }
       code.inline { white-space: nowrap; border:1pt solid gray; padding: 1pt; }
+      .boxin { margin:2em 5em 2em 5em; border:2pt solid black; padding: 1em; float: left; }
     </style>
   </head>
   <body>
@@ -213,16 +214,16 @@ Best Practices</a>.</p>
 
 <h3>Cleaning or stashing</h3>
 
-<p>Before going into post-production, we recommend ensuring that your
+<p>Before going into post-production, you must ensure that your
 working directory is nice and clean so that you will not get
 unnecessary conflicts (e.g. a file which was committed in git but was
 then deleted and left as a non-tracked file) and otherwise have a nice
-and clean <code class="inline">git status</code> to prevent accidents
-during post-production editing.  You can <code class="inline">git
-clean -dnx</code> and if there are no files that you need to keep,
-then <code class="inline">git stash -ua</code> (you might be wrong
-after all) or even (much more dangerously) <code class="inline">git
-clean -dfx</code>.</p>
+and clean <code class="inline">git status</code> without untracked
+files to prevent unfortunately adds during post-production editing.
+You can <code class="inline">git clean -dnx</code> and if there are no
+files that you need to keep, then <code class="inline">git stash
+-ua</code> (you might be wrong after all) or even (much more
+dangerously) <code class="inline">git clean -dfx</code>.</p>
 
 <p><a name="test-repo-production" /></p>
 
@@ -353,8 +354,24 @@ itself, we need to peel off the "Add doubles" commit (leaving the
 working directory with the results of the commit in it) and turn the
 single commit into four distinct commits:</p>
 
+<p class="boxin"><em>Special Warning!</em> We
+use <code class="inline">git reset --mixed HEAD^</code> a lot in this
+document to peel off the last commit so that you can split the commit.
+However, please remember that if you added a file during the commit
+you just removed, it will NOT be left as staged so
+a <code class="inline">git commit -am "foo"</code> will not cause that
+file to be re-added.  Similarly, if a file was deleted in the commit
+you just peeled off, the deletion will also not be staged.  In both
+cases, you would need to manually <code class="inline">git
+add <em>filename</em></code> or (more dangerously and only when you
+know what the status is) <code class="inline">git add -A .</code>.
+You should always inspect <code class="inline">git status</code> after
+your reset and when you think you are done to validate that the system
+is in the state you think it is.</p>
+
 <div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
 git reset --mixed HEAD^
+git status
 git add A
 git commit -m "Add double As"
 git add B
@@ -363,6 +380,7 @@ git add C
 git commit -m "Add double Cs"
 git add D
 git commit -m "Add double Ds"
+git status
 </code></pre><div class="befaftpre"><!-- --></div></div>
 
 <p>Everything looks good, so we can tell git to proceed to the next
@@ -527,10 +545,12 @@ one for Ds, and the other for Cs.  We can go ahead and do that.</p>
 
 <div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
 git reset --mixed HEAD^
+git status
 git add D
 git commit -m "Fill out D series"
 git add C
 git commit -m "Fix truncation problem in C series"
+git status
 </code></pre><div class="befaftpre"><!-- --></div></div>
 
 <p>Yes, I know --mixed is the default for git-reset.  I like being
