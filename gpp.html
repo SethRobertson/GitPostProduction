@@ -751,7 +751,7 @@ combined <b>INtegration</b> step, but doing it
 separately <em>might</em> lead to more easily understood conflicts, if
 you were perchance to encounter conflicts.  Not that this would happen
 to anyone here.  In any case, we once again
-run <code class="inline">git --rebase -i @{u}</code></p>
+run <code class="inline">git rebase -i @{u}</code></p>
 
 <div class="prediv"><div class="befaftpre"><!-- --></div><pre><code>
 pick aa62f4a Bugfix to initial commits
@@ -833,7 +833,7 @@ edit 15c71aa Fill out D series
 <p>You will be dumped into the state of the tree for each commit.  You
 can do ahead and compile, run regression tests, or do whatever else is
 needed to validate your commits.  When you are done validating a
-particular commit, go ahead and run <code class="inline">git reset
+particular commit, go ahead and run <code class="inline">git rebase
 --continue</code> to proceed.  Please note that you might also want to
 run <code class="inline">git clean -ndx</code> (and if that returns
 OK, replace the "-n" with "-f") to prevent work product from one test
